@@ -10,9 +10,20 @@ namespace DesignPatternChallenge
     // Contexto: Sistema de pagamentos que precisa trabalhar com diferentes gateways
     // Cada gateway tem sua própria forma de processar, validar e logar transações
     
-    public interface IValidator{}
-    public interface IProcessor{}
-    public interface ILogger{}
+    public interface IValidator
+    {
+        bool ValidateCard(string cardNumber);
+    }
+
+    public interface IProcessor
+    {
+        string ProcessTransaction(decimal amount, string cardNumber);
+    }
+
+    public interface ILogger
+    {
+        void Log(string message);
+    }
 
     public interface IPaymentGateway
     {
@@ -41,14 +52,9 @@ namespace DesignPatternChallenge
         public ILogger GetLogger() => new StripeLogger();
     }
 
-    public class PaymentService
+    public class PaymentService(IPaymentGateway paymentGateway)
     {
-        private readonly IPaymentGateway _paymentGateway;
-
-        public PaymentService(IPaymentGateway paymentGateway)
-        {
-            _paymentGateway = paymentGateway;
-        }
+        private readonly IPaymentGateway _paymentGateway = paymentGateway;
 
         public void ProcessPayment(decimal amount, string cardNumber)
         {
@@ -56,20 +62,20 @@ namespace DesignPatternChallenge
             var processor = _paymentGateway.GetProcessor();
             var logger = _paymentGateway.GetLogger();
 
-            if (!((dynamic)validator).ValidateCard(cardNumber))
+            if (!validator.ValidateCard(cardNumber))
             {
                 Console.WriteLine($"Cartão inválido");
                 return;
             }
 
-            var result = ((dynamic)processor).ProcessTransaction(amount, cardNumber);
+            var result = processor.ProcessTransaction(amount, cardNumber);
 
-            ((dynamic)logger).Log($"Transação processada: {result}");
+            logger.Log($"Transação processada: {result}");
         }
     }
 
     // Componentes do PagSeguro
-    public class PagSeguroValidator
+    public class PagSeguroValidator : IValidator
     {
         public bool ValidateCard(string cardNumber) 
         {
@@ -78,7 +84,7 @@ namespace DesignPatternChallenge
         }
     }
 
-    public class PagSeguroProcessor
+    public class PagSeguroProcessor : IProcessor
     {
         public string ProcessTransaction(decimal amount, string cardNumber)
         {
@@ -87,7 +93,7 @@ namespace DesignPatternChallenge
         }
     }
 
-    public class PagSeguroLogger
+    public class PagSeguroLogger : ILogger
     {
         public void Log(string message)
         {
@@ -96,7 +102,7 @@ namespace DesignPatternChallenge
     }
 
     // Componentes do MercadoPago
-    public class MercadoPagoValidator
+    public class MercadoPagoValidator : IValidator
     {
         public bool ValidateCard(string cardNumber)
         {
@@ -105,7 +111,7 @@ namespace DesignPatternChallenge
         }
     }
 
-    public class MercadoPagoProcessor
+    public class MercadoPagoProcessor : IProcessor
     {
         public string ProcessTransaction(decimal amount, string cardNumber)
         {
@@ -114,7 +120,7 @@ namespace DesignPatternChallenge
         }
     }
 
-    public class MercadoPagoLogger
+    public class MercadoPagoLogger : ILogger
     {
         public void Log(string message)
         {
@@ -123,7 +129,7 @@ namespace DesignPatternChallenge
     }
 
     // Componentes do Stripe
-    public class StripeValidator
+    public class StripeValidator : IValidator
     {
         public bool ValidateCard(string cardNumber)
         {
@@ -132,7 +138,7 @@ namespace DesignPatternChallenge
         }
     }
 
-    public class StripeProcessor
+    public class StripeProcessor : IProcessor
     {
         public string ProcessTransaction(decimal amount, string cardNumber)
         {
@@ -141,7 +147,7 @@ namespace DesignPatternChallenge
         }
     }
 
-    public class StripeLogger
+    public class StripeLogger : ILogger
     {
         public void Log(string message)
         {
@@ -157,17 +163,20 @@ namespace DesignPatternChallenge
 
             // Problema: Cliente precisa saber qual gateway está usando
             // e o código de processamento está todo acoplado
-            var pagSeguroService = new PaymentService(new PagSeguroGateway());
+            var pagSeguroGateway = new PagSeguroGateway();
+            var pagSeguroService = new PaymentService(pagSeguroGateway);
             pagSeguroService.ProcessPayment(150.00m, "1234567890123456");
 
             Console.WriteLine();
 
-            var mercadoPagoService = new PaymentService(new MercadoPagoGateway());
+            var mercadoPagoGateway = new MercadoPagoGateway();
+            var mercadoPagoService = new PaymentService(mercadoPagoGateway);
             mercadoPagoService.ProcessPayment(200.00m, "5234567890123456");
 
             Console.WriteLine();
 
-            var stripeService = new PaymentService(new StripeGateway());
+            var stripeGateway = new StripeGateway();
+            var stripeService = new PaymentService(stripeGateway);
             stripeService.ProcessPayment(300.00m, "4234567890123456");
 
             // Pergunta para reflexão:
