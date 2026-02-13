@@ -43,12 +43,10 @@ namespace DesignPatternChallenge
 
     public class PaymentService
     {
-        private readonly string _gateway;
         private readonly IPaymentGateway _paymentGateway;
 
-        public PaymentService(string gateway, IPaymentGateway paymentGateway)
+        public PaymentService(IPaymentGateway paymentGateway)
         {
-            _gateway = gateway;
             _paymentGateway = paymentGateway;
         }
 
@@ -60,7 +58,7 @@ namespace DesignPatternChallenge
 
             if (!((dynamic)validator).ValidateCard(cardNumber))
             {
-                Console.WriteLine($"{_gateway}: Cartão inválido");
+                Console.WriteLine($"Cartão inválido");
                 return;
             }
 
@@ -159,15 +157,18 @@ namespace DesignPatternChallenge
 
             // Problema: Cliente precisa saber qual gateway está usando
             // e o código de processamento está todo acoplado
-            var pagSeguroService = new PaymentService("pagseguro");
+            var pagSeguroService = new PaymentService(new PagSeguroGateway());
             pagSeguroService.ProcessPayment(150.00m, "1234567890123456");
 
             Console.WriteLine();
 
-            var mercadoPagoService = new PaymentService("mercadopago");
+            var mercadoPagoService = new PaymentService(new MercadoPagoGateway());
             mercadoPagoService.ProcessPayment(200.00m, "5234567890123456");
 
             Console.WriteLine();
+
+            var stripeService = new PaymentService(new StripeGateway());
+            stripeService.ProcessPayment(300.00m, "4234567890123456");
 
             // Pergunta para reflexão:
             // - Como adicionar um novo gateway sem modificar PaymentService?
