@@ -10,69 +10,63 @@ namespace DesignPatternChallenge
     // Contexto: Sistema de pagamentos que precisa trabalhar com diferentes gateways
     // Cada gateway tem sua própria forma de processar, validar e logar transações
     
+    public interface IValidator{}
+    public interface IProcessor{}
+    public interface ILogger{}
+
+    public interface IPaymentGateway
+    {
+        IValidator GetValidator();
+        IProcessor GetProcessor();
+        ILogger GetLogger();
+    }
+
+    public class PagSeguroGateway : IPaymentGateway
+    {
+        public IValidator GetValidator() => new PagSeguroValidator();
+        public IProcessor GetProcessor() => new PagSeguroProcessor();
+        public ILogger GetLogger() => new PagSeguroLogger();
+    }
+    public class MercadoPagoGateway : IPaymentGateway
+    {
+        public IValidator GetValidator() => new MercadoPagoValidator();
+        public IProcessor GetProcessor() => new MercadoPagoProcessor();
+        public ILogger GetLogger() => new MercadoPagoLogger();
+    }
+
+    public class StripeGateway : IPaymentGateway
+    {
+        public IValidator GetValidator() => new StripeValidator();
+        public IProcessor GetProcessor() => new StripeProcessor();
+        public ILogger GetLogger() => new StripeLogger();
+    }
+
     public class PaymentService
     {
         private readonly string _gateway;
+        private readonly IPaymentGateway _paymentGateway;
 
-        public PaymentService(string gateway)
+        public PaymentService(string gateway, IPaymentGateway paymentGateway)
         {
             _gateway = gateway;
+            _paymentGateway = paymentGateway;
         }
 
         public void ProcessPayment(decimal amount, string cardNumber)
         {
-            // Problema: Switch case gigante para cada gateway
-            // Quando adicionar novo gateway, precisa modificar este método
-            switch (_gateway.ToLower())
+            var validator = _paymentGateway.GetValidator();
+            var processor = _paymentGateway.GetProcessor();
+            var logger = _paymentGateway.GetLogger();
+
+            if (!((dynamic)validator).ValidateCard(cardNumber))
             {
-                case "pagseguro":
-                    var pagSeguroValidator = new PagSeguroValidator();
-                    if (!pagSeguroValidator.ValidateCard(cardNumber))
-                    {
-                        Console.WriteLine("PagSeguro: Cartão inválido");
-                        return;
-                    }
-                    
-                    var pagSeguroProcessor = new PagSeguroProcessor();
-                    var pagSeguroResult = pagSeguroProcessor.ProcessTransaction(amount, cardNumber);
-                    
-                    var pagSeguroLogger = new PagSeguroLogger();
-                    pagSeguroLogger.Log($"Transação processada: {pagSeguroResult}");
-                    break;
-
-                case "mercadopago":
-                    var mercadoPagoValidator = new MercadoPagoValidator();
-                    if (!mercadoPagoValidator.ValidateCard(cardNumber))
-                    {
-                        Console.WriteLine("MercadoPago: Cartão inválido");
-                        return;
-                    }
-                    
-                    var mercadoPagoProcessor = new MercadoPagoProcessor();
-                    var mercadoPagoResult = mercadoPagoProcessor.ProcessTransaction(amount, cardNumber);
-                    
-                    var mercadoPagoLogger = new MercadoPagoLogger();
-                    mercadoPagoLogger.Log($"Transação processada: {mercadoPagoResult}");
-                    break;
-
-                case "stripe":
-                    var stripeValidator = new StripeValidator();
-                    if (!stripeValidator.ValidateCard(cardNumber))
-                    {
-                        Console.WriteLine("Stripe: Cartão inválido");
-                        return;
-                    }
-                    
-                    var stripeProcessor = new StripeProcessor();
-                    var stripeResult = stripeProcessor.ProcessTransaction(amount, cardNumber);
-                    
-                    var stripeLogger = new StripeLogger();
-                    stripeLogger.Log($"Transação processada: {stripeResult}");
-                    break;
-
-                default:
-                    throw new ArgumentException("Gateway não suportado");
+                Console.WriteLine($"{_gateway}: Cartão inválido");
+                return;
             }
+
+            var result = ((dynamic)processor).ProcessTransaction(amount, cardNumber);
+
+            ((dynamic)logger).Log($"Transação processada: {result}");
         }
     }
 
